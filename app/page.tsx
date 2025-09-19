@@ -56,15 +56,38 @@ export default function DesignCraft() {
       previewImage: generatePreviewImage(),
       customText: designData.text,
       printInstructions: `Font: ${designData.textFont}, Size: ${designData.textSize}px, Color: ${designData.textColor}`,
-      designData: designData
+      designData: designData,
+      price: productData.price
     };
 
-    // Send message back to parent Shopify page
-    if (window.parent !== window) {
+    // Send message back to parent Shopify page (works for both popup and iframe)
+    if (window.opener) {
+      // For popup window
+      window.opener.postMessage({
+        type: 'DESIGNCRAFT_ADD_TO_CART',
+        payload: customProduct
+      }, productData.storeUrl || 'https://printscreations.com');
+      
+      // Close the popup after sending message
+      setTimeout(() => {
+        window.close();
+      }, 500);
+    } else if (window.parent !== window) {
+      // For iframe
       window.parent.postMessage({
         type: 'DESIGNCRAFT_ADD_TO_CART',
         payload: customProduct
-      }, productData.storeUrl || '*');
+      }, productData.storeUrl || 'https://printscreations.com');
+    } else {
+      // Fallback - direct redirect to cart with URL parameters
+      const cartUrl = `${productData.storeUrl || 'https://printscreations.com'}/cart/add?` +
+        `id=${customProduct.variantId}&` +
+        `quantity=${customProduct.quantity}&` +
+        `properties[Design ID]=${encodeURIComponent(customProduct.designId)}&` +
+        `properties[Customized Product]=Yes&` +
+        `properties[Custom Text]=${encodeURIComponent(customProduct.customText)}`;
+      
+      window.location.href = cartUrl;
     }
   };
 
