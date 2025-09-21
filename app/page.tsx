@@ -50,7 +50,7 @@ export default function DesignCraft() {
     if (!productData) return;
 
     const customProduct = {
-      variantId: productData.id,
+      variantId: URLSearchParams(window.location.search).get('variant_id') || productData.id,
       quantity: 1,
       designId: `design_${Date.now()}`,
       previewImage: generatePreviewImage(),
@@ -60,33 +60,37 @@ export default function DesignCraft() {
       price: productData.price
     };
 
-    // Send message back to parent Shopify page (works for both popup and iframe)
-    if (window.opener) {
-      // For popup window
-      window.opener.postMessage({
-        type: 'DESIGNCRAFT_ADD_TO_CART',
-        payload: customProduct
-      }, productData.storeUrl || 'https://printscreations.com');
-      
-      // Close the popup after sending message
-      setTimeout(() => {
-        window.close();
-      }, 500);
-    } else if (window.parent !== window) {
-      // For iframe
-      window.parent.postMessage({
-        type: 'DESIGNCRAFT_ADD_TO_CART',
-        payload: customProduct
-      }, productData.storeUrl || 'https://printscreations.com');
-    } else {
-      // Fallback - direct redirect to cart with URL parameters
-      const cartUrl = `${productData.storeUrl || 'https://printscreations.com'}/cart/add?` +
-        `id=${customProduct.variantId}&` +
-        `quantity=${customProduct.quantity}&` +
-        `properties[Design ID]=${encodeURIComponent(customProduct.designId)}&` +
-        `properties[Customized Product]=Yes&` +
-        `properties[Custom Text]=${encodeURIComponent(customProduct.customText)}`;
-      
+    // Create direct Shopify cart URL - more reliable than fetch
+    const storeUrl = new URLSearchParams(window.location.search).get('store_url') || 'https://printscreations.com';
+    
+    const cartUrl = `${storeUrl}/cart/add?` +
+      `id=${customProduct.variantId}&` +
+      `quantity=${customProduct.quantity}&` +
+      `properties[Design ID]=${encodeURIComponent(customProduct.designId)}&` +
+      `properties[Customized Product]=Yes&` +
+      `properties[Custom Text]=${encodeURIComponent(customProduct.customText)}&` +
+      `properties[Design Instructions]=${encodeURIComponent(customProduct.printInstructions)}&` +
+      `properties[Created With]=DesignCraft`;
+
+    // Send message to parent (if available) then redirect
+    try {
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'DESIGNCRAFT_ADD_TO_CART',
+          payload: customProduct
+        }, storeUrl);
+        
+        // Small delay then close
+        setTimeout(() => {
+          window.close();
+        }, 1000);
+        
+      } else {
+        // Direct redirect as fallback
+        window.location.href = cartUrl;
+      }
+    } catch (error) {
+      // If messaging fails, redirect directly
       window.location.href = cartUrl;
     }
   };
