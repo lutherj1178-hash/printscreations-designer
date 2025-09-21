@@ -49,8 +49,13 @@ export default function DesignCraft() {
   const handleAddToCart = async () => {
     if (!productData) return;
 
+    // Get URL parameters safely
+    const urlParams = new URLSearchParams(window.location.search);
+    const variantId = urlParams.get('variant_id') || productData.id;
+    const storeUrl = urlParams.get('store_url') || 'https://printscreations.com';
+
     const customProduct = {
-      variantId: URLSearchParams(window.location.search).get('variant_id') || productData.id,
+      variantId: variantId,
       quantity: 1,
       designId: `design_${Date.now()}`,
       previewImage: generatePreviewImage(),
@@ -61,8 +66,6 @@ export default function DesignCraft() {
     };
 
     // Create direct Shopify cart URL - more reliable than fetch
-    const storeUrl = new URLSearchParams(window.location.search).get('store_url') || 'https://printscreations.com';
-    
     const cartUrl = `${storeUrl}/cart/add?` +
       `id=${customProduct.variantId}&` +
       `quantity=${customProduct.quantity}&` +
